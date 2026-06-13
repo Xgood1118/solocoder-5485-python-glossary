@@ -1,0 +1,11 @@
+产物不满意：
+
+1. 导入导出整个挂掉。POST /api/import-export/import/tbx、/csv、/excel 三种格式的导入接口 router 调 service 时没传 user_id，但 service 签名要求必传这个字段，结果每次调用都 500 Internal Server Error（TypeError: import_tbx() missing 1 required positional argument: 'user_id'），PROMPT 要求的 TBX/CSV/Excel 三种导入等于零可用。
+
+2. FTS 全文搜索接口 /api/terms/search 直接 404 不可用。路由顺序问题——main.py 先 include_router(terms.router)，terms.py 里 GET /api/terms/{term_id} 把后面 lookup.py 里 GET /api/terms/search 给屏蔽了（FastAPI 按注册顺序匹配），term_id="search" 当成查不到的对象返回 404，PROMPT 要求的 FTS5 模糊搜索功能完全走不通。
+
+3. update 改 domain 和 part_of_speech 完全不校验。建术语时 create_term 校验了 VALID_DOMAINS 和 VALID_PARTS_OF_SPEECH，但 PUT /api/terms/{id} 的 update_term 直接 for k,v in update_fields.items(): term[k]=v，没有白名单校验，传 domain="not_a_domain" 也能 200 成功，统计接口 by_domain 立刻把这批非法值算进去污染数据。
+
+4. 审核流 reviewer 字段不校验用户存在。POST /api/terms/{id}/status 的 StatusChange.reviewer 是 Optional[str]，change_status 直接 term["approved_by"] = change.reviewer or user_id 写进去——传 "nonexistent_user_xyz" 或者 "../etc/passwd" 都能落库并通过审核，审计日志里 approved_by 记录完全不可信，谁审的、审没审都不知道。
+
+5. 创建术语 source_term="" 空字符串也 201 通过。POST /api/terms/ 时 data.source_term 是空串，create_term 直接 term["source_term"] = data.source_term 写进索引，下游 lookup N-gram 匹配时 source_term="" 长度为 0 直接被跳过，但 FTS insert 写空字符串、FTS5 MATCH 也会有奇怪行为，空字符串术语在 list 接口里看着像"系统术语"骗过人工审核。
