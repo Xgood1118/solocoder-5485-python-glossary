@@ -8,7 +8,7 @@ from typing import Optional
 from lxml import etree
 from openpyxl import Workbook, load_workbook
 
-from app.config import VALID_DOMAINS
+from app.config import VALID_DOMAINS, VALID_PARTS_OF_SPEECH
 from app.database import db
 from app.models import TermCreate, new_id, now
 from app.services.audit_service import add_audit_log
@@ -36,6 +36,10 @@ def _upsert_term(data: TermCreate, user_id: str) -> str:
     key = _idempotent_key(data.source_term, data.source_lang, data.target_lang, data.domain)
     existing = _find_existing_term(key)
     if existing:
+        if data.domain not in VALID_DOMAINS:
+            raise ValueError(f"Invalid domain: {data.domain}")
+        if data.part_of_speech not in VALID_PARTS_OF_SPEECH:
+            raise ValueError(f"Invalid part_of_speech: {data.part_of_speech}")
         existing["version"] += 1
         existing["source_term"] = data.source_term
         existing["source_lang"] = data.source_lang

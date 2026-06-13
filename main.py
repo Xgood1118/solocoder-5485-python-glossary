@@ -26,9 +26,9 @@ app = FastAPI(
 
 from app.routers import terms, audit, lookup, check, import_export, users, points, notifications, subscriptions, recommendations, learning, graph, statistics, meetings, workflow
 
+app.include_router(lookup.router)
 app.include_router(terms.router)
 app.include_router(audit.router)
-app.include_router(lookup.router)
 app.include_router(check.router)
 app.include_router(import_export.router)
 app.include_router(users.router)

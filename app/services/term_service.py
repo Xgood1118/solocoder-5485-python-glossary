@@ -206,6 +206,14 @@ def update_term(term_id: str, data: TermUpdate, user_id: str) -> Optional[dict]:
 
     old_data = {f: term.get(f) for f in _VERSION_FIELDS}
     update_fields = data.model_dump(exclude_none=True)
+
+    if "domain" in update_fields and update_fields["domain"] not in VALID_DOMAINS:
+        raise ValueError(f"Invalid domain: {update_fields['domain']}")
+    if "part_of_speech" in update_fields and update_fields["part_of_speech"] not in VALID_PARTS_OF_SPEECH:
+        raise ValueError(f"Invalid part_of_speech: {update_fields['part_of_speech']}")
+    if "status" in update_fields and update_fields["status"] not in VALID_STATUSES:
+        raise ValueError(f"Invalid status: {update_fields['status']}")
+
     for key, value in update_fields.items():
         term[key] = value
 
@@ -256,6 +264,13 @@ def change_status(term_id: str, change: StatusChange, user_id: str) -> Optional[
 
     if to_status not in VALID_STATUSES:
         raise ValueError(f"Invalid status: {to_status}")
+
+    if change.reviewer:
+        reviewer_user = _get_user(change.reviewer)
+        if not reviewer_user:
+            raise ValueError(f"Reviewer user not found: {change.reviewer}")
+        if reviewer_user.get("role") not in ("reviewer", "domain_lead", "admin"):
+            raise ValueError(f"User {change.reviewer} does not have reviewer permissions")
 
     transition = (from_status, to_status)
     if transition not in VALID_TRANSITIONS:

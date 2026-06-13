@@ -84,7 +84,10 @@ def get_term(term_id: str, x_user_id: Optional[str] = Header(None)):
 def update_term(term_id: str, body: TermUpdate, x_user_id: Optional[str] = Header(None)):
     """Update an existing term."""
     user = _resolve_user(x_user_id)
-    term = term_service.update_term(term_id, body, user["user_id"])
+    try:
+        term = term_service.update_term(term_id, body, user["user_id"])
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if not term:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term not found or access denied")
     return term
